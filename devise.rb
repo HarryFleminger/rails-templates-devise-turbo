@@ -8,6 +8,7 @@ inject_into_file "Gemfile", before: "group :development, :test do" do
     gem "autoprefixer-rails"
     gem "font-awesome-sass", "~> 6.1"
     gem "simple_form", github: "heartcombo/simple_form"
+    gem "turbo-rails"
   RUBY
 end
 
@@ -132,26 +133,29 @@ after_bundle do
   ########################################
   rails_command "db:migrate"
   generate("devise:views")
-  gsub_file(
-    "app/views/devise/registrations/new.html.erb",
-    "<%= simple_form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>",
-    "<%= simple_form_for(resource, as: resource_name, url: registration_path(resource_name), data: { turbo: :false }) do |f| %>"
-  )
+
+  # Add Turbo Frames to Devise views
+  ########################################
   gsub_file(
     "app/views/devise/sessions/new.html.erb",
     "<%= simple_form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>",
-    "<%= simple_form_for(resource, as: resource_name, url: session_path(resource_name), data: { turbo: :false }) do |f| %>"
+    "<turbo-frame id=\"new_session\"><%= simple_form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>"
   )
-  link_to = <<~HTML
-    <p>Unhappy? <%= link_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?" }, method: :delete %></p>
-  HTML
-  button_to = <<~HTML
-    <div class="d-flex align-items-center">
-      <div>Unhappy?</div>
-      <%= button_to "Cancel my account", registration_path(resource_name), data: { confirm: "Are you sure?" }, method: :delete, class: "btn btn-link" %>
-    </div>
-  HTML
-  gsub_file("app/views/devise/registrations/edit.html.erb", link_to, button_to)
+  append_to_file "app/views/devise/sessions/new.html.erb", "</turbo-frame>"
+
+  gsub_file(
+    "app/views/devise/registrations/new.html.erb",
+    "<%= simple_form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>",
+    "<turbo-frame id=\"new_registration\"><%= simple_form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>"
+  )
+  append_to_file "app/views/devise/registrations/new.html.erb", "</turbo-frame>"
+
+  gsub_file(
+    "app/views/devise/passwords/new.html.erb",
+    "<%= simple_form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :post }) do |f| %>",
+    "<turbo-frame id=\"new_password\"><%= simple_form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :post }) do |f| %>"
+  )
+  append_to_file "app/views/devise/passwords/new.html.erb", "</turbo-frame>"
 
   # Pages Controller
   ########################################
